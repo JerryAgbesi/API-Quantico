@@ -1,11 +1,17 @@
 from flask import Flask,request,jsonify
 import sqlite3
 
-conn = sqlite3.connect('books.sqlite')
 
 app =  Flask(__name__)
 
-
+def db_connection():
+  conn = None
+  try:
+   conn = sqlite3.connect('books.sqlite')
+   print("database connected")
+  except sqlite3.error as e:
+    print(e) 
+  return conn   
 
 # books = open('book.json','r+')
 # books = list(books.read())
@@ -16,54 +22,78 @@ def home():
 
 @app.route('/books',methods = ['GET','POST'])
 def books():
+    conn = db_connection()
+    cursor = conn.cursor()
+
     if request.method == 'GET':
-        if len(libBooks) > 0:
-            return jsonify(libBooks)
+        query = conn.execute('SELECT * FROM books')
+
+        books = [dict(id=row[0],author = row[1],language = row[2],title = row[3] )
+        for row in query.fetchall()]
+    
+        if books is not None:
+          return jsonify(books)
+
+    if request.method == 'POST':
+      newAuthor = request.form["author"]
+      newLanguage = request.form["language"]
+      newTitle = request.form["title"]
+
+      command = """ INSERT INTO books(author, language, title)
+      VALUES(?, ?, ?)"""
+
+      cursord =  cursor.execute(command,(newAuthor, newLanguage, newTitle))
+      conn.commit()
+
+      return f"Book with index: {cursord.lastrowid} created successfully",200  
+
+@app.route('/books/<int:id>',methods=["GET","PUT","DELETE"])
+def manipulate(id):
+    conn =  db_connection()
+    cursor = conn.cursor()
+    book = None
+
+    if request.method == 'GET':
+        cursor.execute('SELECT * FROM books WHERE id = ?',(id,))
+        row = cursor.fetchall()
+        for r in row:
+          book = r
+        if book is not None:
+          return jsonify(book),200
         else:
-            return 'No books found',400
-    else:
-        new_object = {
-            "author": request.form['author'],
-            "country": request.form['country'],
-            "imageLink":  request.form['imageLink'],
-            "language":  request.form['language'],
-            "link":  request.form['link'],
-            "pages":request.form['pages'],
-            "title":  request.form['title'],
-            "year": request.form['year']
-        }
-        libBooks.append(new_object)
-        return jsonify(libBooks),201 
+          return "Id not found",404 
+            
+    if request.method == 'PUT':
+      script = """UPDATE books
+      SET author=?,
+      language = ?,
+      title = ?
+      WHERE id = ?"""
+      
+      update_title = request.form["title"]
+      update_author= request.form['author']
+      update_language = request.form['language']
 
-@app.route('/books/<title>',methods=["GET","PUT","DELETE"])
-def manipulate(title):
-    if request.method == 'GET':
-        for book in libBooks:
-            if book['title'] == title:
-                return jsonify(book),200
-                pass
-           
-    elif request.method == 'PUT':
-         for book in libBooks:
-            if book['title'] == title:
-                 book['author'] = request.form['author']
-                 book['country'] =  request.form['country']
-                 book["imageLink"] =  request.form['imageLink']
-                 book["language"] = request.form['language']
-                 book["link"] =  request.form['link']
-                 book["pages"]=request.form['pages']
-                 book["title"] = request.form['title']
-                 book["year"] = request.form['year']
+      updated_book = {
+        "id":id,
+        "author":update_author,
+        "language":update_language,
+        "title":update_title
 
-                 return jsonify(book),200
-    elif request.method == 'DELETE':  
-         for index,book in enumerate(libBooks):
-            if book['title'] == title:
-                libBooks.pop(index)
-                return jsonify(book),200  
-    else:
-        return 'Operation failed',400                     
+      }
 
+      cursor.execute(script,(update_author,update_language,update_title,id))
+      conn.commit()
+      return jsonify(updated_book),200
+
+    if request.method == 'DELETE': 
+      cursor.execute("DELETE FROM books WHERE id=?",(id,))
+      conn.commit()
+      return f"Book with ID {id},has been deleted"
+
+
+
+      
 
 
 
