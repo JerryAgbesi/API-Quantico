@@ -1,20 +1,37 @@
 from flask import Flask,request,jsonify
-import sqlite3
+# import sqlite3
+import pymysql
+from dotenv import load_dotenv
+import os
+from pathlib import Path
 
+
+
+env_path = Path('.','.env')
+
+load_dotenv(dotenv_path=env_path)
+
+dbhost = os.getenv('Host')
+dbname = os.getenv('database')
+dbuser = os.getenv('user')
+dbpassword= os.getenv('password')
 
 app =  Flask(__name__)
 
 def db_connection():
   conn = None
   try:
-   conn = sqlite3.connect('books.sqlite')
+   conn = pymysql.connect(host=  dbhost,
+database=  dbname,
+ user = dbuser,
+ password = dbpassword,
+ charset = "utf8mb4",
+ cursorclass = pymysql.cursors.DictCursor)
    print("database connected")
-  except sqlite3.error as e:
+  except pymysql.error as e:
     print(e) 
   return conn   
 
-# books = open('book.json','r+')
-# books = list(books.read())
 
 @app.route('/',methods=["GET"])
 def home():
@@ -26,10 +43,10 @@ def books():
     cursor = conn.cursor()
 
     if request.method == 'GET':
-        query = conn.execute('SELECT * FROM books')
+        cursor.execute('SELECT * FROM books')
 
-        books = [dict(id=row[0],author = row[1],language = row[2],title = row[3] )
-        for row in query.fetchall()]
+        books = [dict(id=row['id'],author = row['author'],language = row['language'],title = row['title'] )
+        for row in cursor.fetchall()]
     
         if books is not None:
           return jsonify(books)
@@ -40,12 +57,12 @@ def books():
       newTitle = request.form["title"]
 
       command = """ INSERT INTO books(author, language, title)
-      VALUES(?, ?, ?)"""
+      VALUES(%s, %s, %s)"""
 
-      cursord =  cursor.execute(command,(newAuthor, newLanguage, newTitle))
+      cursor.execute(command,(newAuthor, newLanguage, newTitle))
       conn.commit()
 
-      return f"Book with index: {cursord.lastrowid} created successfully",200  
+      return f"Book with index: {cursor.lastrowid} created successfully",200  
 
 @app.route('/books/<int:id>',methods=["GET","PUT","DELETE"])
 def manipulate(id):
@@ -54,7 +71,7 @@ def manipulate(id):
     book = None
 
     if request.method == 'GET':
-        cursor.execute('SELECT * FROM books WHERE id = ?',(id,))
+        cursor.execute('SELECT * FROM books WHERE id = %s',(id,))
         row = cursor.fetchall()
         for r in row:
           book = r
@@ -65,10 +82,10 @@ def manipulate(id):
             
     if request.method == 'PUT':
       script = """UPDATE books
-      SET author=?,
-      language = ?,
-      title = ?
-      WHERE id = ?"""
+      SET author=%s,
+      language = %s,
+      title = %s
+      WHERE id = %s"""
       
       update_title = request.form["title"]
       update_author= request.form['author']
@@ -87,7 +104,7 @@ def manipulate(id):
       return jsonify(updated_book),200
 
     if request.method == 'DELETE': 
-      cursor.execute("DELETE FROM books WHERE id=?",(id,))
+      cursor.execute("DELETE FROM books WHERE id=%s",(id,))
       conn.commit()
       return f"Book with ID {id},has been deleted"
 
