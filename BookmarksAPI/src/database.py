@@ -42,7 +42,10 @@ class Bookmark(db.Model):
             return shortened
 
 
-    def __init__(self,**kwargs):
+    def __init__(self,body,url,user_id):
+        self.body = body
+        self.url = url
+        self.user_id = user_id
         self.short_url = self.generate_short_url()
 
     def __repr__(self) -> str:
