@@ -13,7 +13,7 @@ def handle_bookmarks():
     if request.method == "POST":
        body = request.get_json().get("body","")
        url = request.get_json().get("url","")
-       print(url)
+     
 
        if not validators.url(url):
         return jsonify({"Error":"Enter a valid url"}),400
@@ -74,27 +74,65 @@ def handle_bookmarks():
             "meta":meta
         }),200      
 
-@bookmark.route("/<int:id>",methods=["GET"])
+@bookmark.route("/<int:id>",methods=["GET","PUT","PATCH"])
 @jwt_required()
 def get_bookmark(id):
     current_user = get_jwt_identity()
-    bookmark = Bookmark.query.filter_by(id=id,user_id=current_user).first()
 
-    if bookmark:
-        return jsonify({
-            "data": { 
-               "id":bookmark.id,
-                "body": bookmark.body,
-                "url":bookmark.url,
-                "short_url": bookmark.short_url,
-                "visits": bookmark.visits,
-                "created_at": bookmark.created_at, 
-                "updated_at": bookmark.Updated_at}
-            
-        }),200
-    else:
-        return jsonify({
-            "message": f"Bookmark with id {id} does not exist"
-        }),404    
-       
+    if request.method == "GET":
+        bookmark = Bookmark.query.filter_by(id=id,user_id=current_user).first()
+
+        if bookmark:
+            return jsonify({
+                "data": { 
+                "id":bookmark.id,
+                    "body": bookmark.body,
+                    "url":bookmark.url,
+                    "short_url": bookmark.short_url,
+                    "visits": bookmark.visits,
+                    "created_at": bookmark.created_at, 
+                    "updated_at": bookmark.Updated_at}
+                
+            }),200
+        else:
+            return jsonify({
+                "message": f"Bookmark with id {id} does not exist"
+            }),404    
+
+    if request.method == "PUT" or request.method == "PATCH"  :
+        bookmark = Bookmark.query.filter_by(id=id,user_id=current_user).first()
+        
+        body = request.get_json().get("body","")
+        url = request.get_json().get("url","")
+
+        if not validators.url(url):
+            return jsonify({
+                "Error":"Enter a valid url"
+            })
+        
+        
+        if bookmark:
+           bookmark.body = body
+           bookmark.url = url
+           db.session.commit()
+
+           return jsonify({
+                "data": { 
+                    "id":bookmark.id,
+                    "body": bookmark.body,
+                    "url":bookmark.url,
+                    "short_url": bookmark.short_url,
+                    "visits": bookmark.visits,
+                    "created_at": bookmark.created_at, 
+                    "updated_at": bookmark.Updated_at}
+                
+            }),200
+        else:
+            return jsonify({
+                "message": f"Bookmark with id {id} does not exist"
+            }),404    
+
+
+
+
        
