@@ -132,6 +132,27 @@ def get_bookmark(id):
                 "message": f"Bookmark with id {id} does not exist"
             }),404    
 
+@bookmark.route("/<int:id>",methods=["DELETE"])
+@jwt_required()
+def delete_bookmark(id):
+    current_user = get_jwt_identity()
+
+    bookmark = Bookmark.query.filter_by(id=id,user_id=current_user).first()
+
+    if bookmark:
+        db.session.delete(bookmark)
+        db.session.commit()
+        return jsonify({
+            "message":"Bookmark deleted successfully"
+        }),200
+    else:
+        return jsonify({
+            "Error":"Bookmark not found"
+        }),404  
+        
+
+
+
 
 
 
