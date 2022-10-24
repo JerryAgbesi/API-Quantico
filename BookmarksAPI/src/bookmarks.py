@@ -144,7 +144,7 @@ def delete_bookmark(id):
         db.session.commit()
         return jsonify({
             "message":"Bookmark deleted successfully"
-        }),200
+        }),204
     else:
         return jsonify({
             "Error":"Bookmark not found"
