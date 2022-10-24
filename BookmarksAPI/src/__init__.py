@@ -19,7 +19,7 @@ def create_app(testing_config=None):
 
     @app.get("/")
     def index():
-        return "initial route" 
+        return "Welcome to the Bookmarks API" 
 
     
     db.app = app
@@ -28,6 +28,7 @@ def create_app(testing_config=None):
 
     app.register_blueprint(auth)
     app.register_blueprint(bookmark)
+
 
     @app.get("/<short_url>")
     def redirect_to(short_url):
@@ -40,7 +41,15 @@ def create_app(testing_config=None):
         else:
             return jsonify({
                 "Error":"URL not found"
-            }),404    
+            }),404 
 
+    #Error handling  
+    @app.errorhandler(404)
+    def handle_404(e):
+        return jsonify({"Error":"Resource not found"}),404
+
+    @app.errorhandler(500)
+    def handle_error(e):
+        return jsonify({"Error":"It's not your fault,it's ours"}),500  
 
     return app

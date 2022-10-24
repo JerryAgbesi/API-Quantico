@@ -1,3 +1,4 @@
+from tracemalloc import get_object_traceback
 from flask import Flask,Blueprint,request,jsonify
 from src.database import db,Bookmark
 import validators
@@ -149,7 +150,40 @@ def delete_bookmark(id):
         return jsonify({
             "Error":"Bookmark not found"
         }),404  
-        
+
+@bookmark.route("/stats",methods=["GET"])
+@jwt_required()
+def get_stats():
+    current_user = get_jwt_identity()
+   
+
+    page = request.args.get("page",1,type=int)
+    per_page = request.args.get("per_page",5,type=int)
+    
+    bookmarks = Bookmark.query.filter_by(user_id=current_user).paginate(page=page,per_page= per_page)
+
+       
+    bookmark_list= [{
+                "id":bookmark.id,
+                "url":bookmark.url,
+                "short_url": bookmark.short_url,
+                "visits": bookmark.visits,}
+                for bookmark in bookmarks]
+
+    meta = {
+            "page":bookmarks.page,
+            "per_page":bookmarks.per_page,
+            "total_count":bookmarks.total,
+            "has_next":bookmarks.has_next
+        }        
+
+    return jsonify({
+            "data": bookmark_list,
+            "meta":meta
+        }),200
+
+
+
 
 
 
